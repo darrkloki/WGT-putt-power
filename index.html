@@ -1,0 +1,171 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8"/>
+<meta name="viewport" content="width=device-width, initial-scale=1"/>
+<title>WGT Golf • Putt Power Calculator</title>
+<style>
+  html, body { padding: 0; margin: 0; font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif; background:#0e1116; color:#e6e6e6; }
+  .wrap { max-width: 880px; margin: 24px auto 80px; padding: 24px; }
+  h1 { font-size: 22px; margin: 0 0 16px; }
+  .card { background: #171b22; border: 1px solid #2a3140; border-radius: 12px; padding: 16px; margin-bottom: 16px; }
+  .grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(240px, 1fr)); gap: 12px; }
+  label { font-size: 13px; color: #a8b3cf; display:block; margin-bottom: 6px; }
+  input[type="number"], select { width: 100%; padding: 10px 12px; border-radius: 8px; border: 1px solid #2a3140; background:#0e1116; color:#e6e6e6; }
+  .row { display:flex; gap:12px; align-items:center; }
+  .btn { border: 1px solid #2a3140; background:#0b5; color:#071; font-weight:600; padding: 12px 16px; border-radius: 10px; cursor:pointer; }
+  .btn:hover { filter: brightness(1.05); }
+  .btn.secondary { background:#0e1116; color:#e6e6e6; }
+  .muted { color:#99a4bf; font-size: 13px; }
+  .result { background:#0f1420; border:1px solid #314; padding:16px; border-radius:12px; margin-top: 12px; }
+  .result h2 { margin: 0 0 6px; font-size: 18px; }
+  .badge { display:inline-block; padding:4px 8px; border-radius:999px; border:1px solid #2a3140; font-size:12px; color:#a8b3cf; }
+  details summary { cursor: pointer; user-select: none; margin: 8px 0; }
+  code { background:#0e1116; border:1px solid #2a3140; padding: 2px 6px; border-radius:6px; }
+  .footer { margin-top: 20px; font-size: 12px; color:#8893ad; }
+</style>
+</head>
+<body>
+  <div class="wrap">
+    <h1>WGT Golf • Putt Power Calculator <span class="badge">self‑contained</span></h1>
+    <div class="card">
+      <div class="grid">
+        <div>
+          <label for="distance">Distance to hole (feet)</label>
+          <input type="number" id="distance" inputmode="decimal" step="0.1" min="0" value="12.0"/>
+        </div>
+        <div>
+          <label for="elev">Elevation (inches, +up / −down)</label>
+          <input type="number" id="elev" inputmode="decimal" step="0.1" value="0"/>
+        </div>
+        <div>
+          <label for="speed">Green speed (e.g., 10.0 = Very Fast)</label>
+          <input type="number" id="speed" inputmode="decimal" step="0.1" min="6" max="16" value="10.0"/>
+        </div>
+        <div>
+          <label for="putter">Putter meter (ft)</label>
+          <select id="putter">
+            <option>10</option><option>15</option><option selected>20</option><option>30</option>
+            <option>45</option><option>60</option><option>100</option><option>150</option><option>300</option>
+          </select>
+        </div>
+      </div>
+
+      <details>
+        <summary>Advanced tuning (optional)</summary>
+        <div class="grid">
+          <div>
+            <label for="upFactor">Uphill factor (ft per inch)</label>
+            <input type="number" id="upFactor" inputmode="decimal" step="0.05" value="1.0"/>
+          </div>
+          <div>
+            <label for="downFactor">Downhill factor (ft per inch)</label>
+            <input type="number" id="downFactor" inputmode="decimal" step="0.05" value="0.60"/>
+          </div>
+          <div>
+            <label for="speedMult">Green speed multiplier</label>
+            <input type="number" id="speedMult" inputmode="decimal" step="0.01" value="1.00"/>
+          </div>
+          <div>
+            <label for="targetPct">Target power band center (%)</label>
+            <input type="number" id="targetPct" inputmode="decimal" step="1" min="10" max="100" value="60"/>
+          </div>
+        </div>
+        <p class="muted">
+          Defaults follow a common WGT heuristic: uphill ≈ +1.0 ft per inch; downhill ≈ −0.6 ft per inch (faster greens trend toward −0.7 to −0.8). 
+          <br/>Set <code>Green speed multiplier</code> to scale total distance for especially slow/fast tournament speeds (e.g., 1.10 for 11.0; 0.92 for 9.2). Leave at 1.00 if unsure.
+        </p>
+      </details>
+
+      <div class="row" style="margin-top:8px">
+        <button class="btn" onclick="calc()">Calculate</button>
+        <button class="btn secondary" onclick="resetFields()">Reset</button>
+      </div>
+
+      <div class="result" id="out" aria-live="polite">
+        <h2>Result</h2>
+        <div id="primary"></div>
+        <div id="alt"></div>
+        <div id="notes" class="muted" style="margin-top:6px"></div>
+      </div>
+    </div>
+
+    <div class="footer">
+      Tips: If power &gt; 100% on your chosen meter, switch to the next meter up. For very fast/tournament greens, increase the downhill factor and/or speed multiplier slightly.
+    </div>
+  </div>
+
+<script>
+function val(id){ return parseFloat(document.getElementById(id).value || "0"); }
+function set(id,v){ document.getElementById(id).value = v; }
+function clip(x,lo,hi){ return Math.max(lo, Math.min(hi, x)); }
+
+function calc(){
+  const d = val('distance');          // feet
+  const elev = val('elev');           // inches (+ up, - down)
+  const speed = val('speed');         // e.g., 10.0
+  const meter = val('putter');        // ft
+  const upF = val('upFactor');        // ft per inch
+  const dnF = val('downFactor');      // ft per inch (positive magnitude)
+  let mult = val('speedMult');        // scalar
+  const targetPct = clip(val('targetPct'), 10, 100);
+
+  // If user left speedMult at 1.00, suggest a gentle auto estimate around 10.0 baseline
+  if (Math.abs(mult - 1.00) < 1e-6){
+    // very light slope vs 10.0; cap between 0.85 and 1.20
+    mult = clip(1 + (speed - 10.0) * 0.06, 0.85, 1.20);
+  }
+
+  // Elevation adjustment: +uphill, -downhill
+  const elevFt = elev >= 0 ? elev * upF : elev * (-dnF);
+  let eff = (d + elevFt) * mult;
+
+  // Primary power %
+  let pct = (eff / meter) * 100;
+  let pctClamped = clip(pct, 0, 200);
+
+  // Alternative meter suggestion to center near targetPct
+  const meters = [10,15,20,30,45,60,100,150,300];
+  let best = {meter: meter, pct: pct, score: Math.abs(pct - targetPct)};
+  meters.forEach(m => {
+    const p = (eff / m) * 100;
+    const score = Math.abs(p - targetPct) + (p > 110 ? 50 : 0); // penalize > 110%
+    if (score < best.score) best = {meter: m, pct: p, score};
+  });
+
+  // Update UI
+  const pEl = document.getElementById('primary');
+  const aEl = document.getElementById('alt');
+  const nEl = document.getElementById('notes');
+
+  pEl.innerHTML = `<strong>Recommended power:</strong> ${pctClamped.toFixed(1)}% on the <strong>${meter} ft</strong> meter.`;
+
+  if (best.meter !== meter) {
+    aEl.innerHTML = `Try the <strong>${best.meter} ft</strong> meter for ~<strong>${best.pct.toFixed(1)}%</strong> (near your ${targetPct}% target).`;
+  } else {
+    aEl.innerHTML = `Your chosen meter is already near the target band (~${targetPct}%).`;
+  }
+
+  let extra = [];
+  extra.push(`Effective distance after adjustments ≈ <strong>${eff.toFixed(2)} ft</strong>.`);
+  extra.push(`Elevation contributed <strong>${elevFt.toFixed(2)} ft</strong> (${elev >= 0 ? 'uphill' : 'downhill'}).`);
+  extra.push(`Green speed multiplier used: <strong>${mult.toFixed(2)}</strong> (input speed ${speed.toFixed(1)}).`);
+  nEl.innerHTML = extra.join(' ');
+}
+
+function resetFields(){
+  set('distance', 12.0);
+  set('elev', 0);
+  set('speed', 10.0);
+  set('putter', 20);
+  set('upFactor', 1.0);
+  set('downFactor', 0.60);
+  set('speedMult', 1.00);
+  set('targetPct', 60);
+  document.getElementById('primary').innerHTML = '';
+  document.getElementById('alt').innerHTML = '';
+  document.getElementById('notes').innerHTML = '';
+}
+</script>
+</body>
+</html>
