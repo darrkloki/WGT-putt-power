@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>WGT Putt Power Calculator</title>
+<title>WGT Putt Power Calculator + Aim</title>
 <style>
   :root{
     --bg:#0f172a; --panel:#111827; --muted:#334155; --text:#e5e7eb;
@@ -15,22 +15,24 @@
     background: radial-gradient(1200px 800px at 80% -10%, #1f2937 0, #0b1220 40%, #060a12 100%), var(--bg);
     color:var(--text); line-height:1.35;
   }
-  .wrap{max-width:920px; margin:0 auto; padding:20px}
+  .wrap{max-width:980px; margin:0 auto; padding:20px}
   h1{font-size:clamp(20px,3.6vw,28px); margin:6px 0 14px}
   .card{background:linear-gradient(180deg, rgba(255,255,255,.06), rgba(255,255,255,.02));
         border:1px solid rgba(255,255,255,.1);
         border-radius:14px; padding:16px; box-shadow: 0 10px 30px rgba(0,0,0,.25)}
   .grid{display:grid; gap:12px; grid-template-columns: repeat(12,1fr)}
   .col-12{grid-column: span 12}
+  .col-9{grid-column: span 9}
+  .col-8{grid-column: span 8}
   .col-6{grid-column: span 6}
   .col-4{grid-column: span 4}
   .col-3{grid-column: span 3}
-  @media (max-width:720px){ .col-6,.col-4,.col-3{grid-column: span 12} }
+  @media (max-width:760px){ .col-9,.col-8,.col-6,.col-4,.col-3{grid-column: span 12} }
   label{display:block; font-size:13px; color:#cbd5e1; margin:0 0 6px}
   input,select,button,textarea{
     width:100%; box-sizing:border-box;
     padding:12px 12px; border-radius:10px; border:1px solid rgba(255,255,255,.1);
-    background:#0a0f1a; color:var(--text); font-size:16px; outline:none;
+    background:#0a0f1a; color:#e5e7eb; font-size:16px; outline:none;
   }
   input:focus,select:focus,textarea:focus{border-color:var(--accent); box-shadow:0 0 0 3px rgba(56,189,248,.25)}
   .row{display:flex; gap:8px; align-items:center}
@@ -54,11 +56,12 @@
   .footer{font-size:12px; color:#94a3b8; margin-top:16px}
   .inline-btns{display:flex; gap:6px}
   .tiny{padding:8px 10px; font-size:14px}
+  .aim{font-size:clamp(18px,4.6vw,28px); font-weight:800}
 </style>
 </head>
 <body>
 <div class="wrap">
-  <h1>WGT Putt Power Calculator</h1>
+  <h1>WGT Putt Power Calculator <span class="muted">+ Aim</span></h1>
   <div class="card">
     <div class="grid">
       <div class="col-6">
@@ -74,7 +77,7 @@
             <button class="tiny btn btn-ghost" type="button" onclick="nudge('elevationIn',+0.1)">+0.1</button>
           </div>
         </div>
-        <div class="hint">WGT displays elevation in inches. iOS: use nudge if ± is hidden.</div>
+        <div class="hint">WGT shows elevation in inches. iOS: use nudge if ± is hidden.</div>
       </div>
 
       <div class="col-4">
@@ -96,28 +99,65 @@
         <div class="hint">Global multiplier to match your feel/ball.</div>
       </div>
 
+      <!-- Aim inputs -->
       <div class="col-12">
-        <details>
-          <summary>Advanced Tuning</summary>
+        <details open>
+          <summary>Aim (uses moving dot speed & direction)</summary>
           <div class="grid" style="margin-top:10px">
             <div class="col-4">
-              <label for="uphillFactor">Uphill Factor (per foot)</label>
-              <input id="uphillFactor" inputmode="decimal" type="number" step="0.01" value="1.70">
+              <label for="dotTime">Dot Time — seconds per grid square</label>
+              <input id="dotTime" inputmode="decimal" type="number" step="0.1" placeholder="e.g., 1.0">
+              <div class="hint">Time a single dot to travel one grid square near the hole; average a few readings.</div>
             </div>
             <div class="col-4">
-              <label for="downhillFactor">Downhill Factor (per foot)</label>
-              <input id="downhillFactor" inputmode="decimal" type="number" step="0.01" value="0.65">
+              <label for="dotDir">Dot Direction (facing the hole)</label>
+              <select id="dotDir">
+                <option value="L">Left</option>
+                <option value="R">Right</option>
+              </select>
             </div>
             <div class="col-4">
-              <label for="snapPenalty">Snap Miss Penalty (%)</label>
-              <input id="snapPenalty" inputmode="decimal" type="number" step="0.5" value="0">
+              <label for="aimOut">Aim Offset (squares)</label>
+              <input id="aimOut" type="text" readonly value="—">
+              <div class="hint">Positive = aim LEFT, Negative = aim RIGHT.</div>
             </div>
           </div>
+
+          <details>
+            <summary>Calibration (advanced)</summary>
+            <div class="grid" style="margin-top:10px">
+              <div class="col-3">
+                <label for="breakK">Break Coefficient @ speed 10</label>
+                <input id="breakK" inputmode="decimal" type="number" step="0.005" value="0.040">
+                <div class="hint">Scales overall aim. Increase if you under-read.</div>
+              </div>
+              <div class="col-3">
+                <label for="distExp">Distance Exponent</label>
+                <input id="distExp" inputmode="decimal" type="number" step="0.05" value="1.20">
+                <div class="hint">Nonlinear growth with distance.</div>
+              </div>
+              <div class="col-3">
+                <label for="spdExp">Green Speed Exponent</label>
+                <input id="spdExp" inputmode="decimal" type="number" step="0.05" value="0.70">
+                <div class="hint">How much faster greens add break.</div>
+              </div>
+              <div class="col-3">
+                <label for="upBreakPerFt">Uphill Break (%/ft)</label>
+                <input id="upBreakPerFt" inputmode="decimal" type="number" step="0.01" value="-0.30">
+                <div class="hint">Negative reduces break for uphill.</div>
+              </div>
+              <div class="col-3">
+                <label for="dnBreakPerFt">Downhill Break (%/ft)</label>
+                <input id="dnBreakPerFt" inputmode="decimal" type="number" step="0.01" value="+0.40">
+                <div class="hint">Positive increases break for downhill.</div>
+              </div>
+            </div>
+          </details>
         </details>
       </div>
 
       <div class="col-12 two-btns">
-        <button id="calcBtn" class="btn btn-primary">Calculate Power</button>
+        <button id="calcBtn" class="btn btn-primary">Calculate Power + Aim</button>
         <button id="resetBtn" class="btn btn-ghost">Reset</button>
         <span class="pill"><span class="kicker">Default Elevation</span> −1.0 in</span>
       </div>
@@ -125,30 +165,40 @@
       <div class="col-12">
         <div class="result" id="result">Enter values and tap Calculate.</div>
         <div class="hint" id="explain"></div>
+        <div class="aim" id="aimExplain"></div>
       </div>
     </div>
   </div>
 
   <div class="footer">
-    Tip: Long-press the result to copy on iOS.
+    Tip: For better dot timing, count 3 squares and divide by 3 to average out jitter.
   </div>
 </div>
 
 <script>
 (function(){
   const $ = id => document.getElementById(id);
-  const fields = ["distance","elevationIn","greenSpeed","putterMeter","stimp","uphillFactor","downhillFactor","snapPenalty"];
+  const fields = [
+    "distance","elevationIn","greenSpeed","putterMeter","stimp",
+    "dotTime","dotDir","breakK","distExp","spdExp","upBreakPerFt","dnBreakPerFt","snapPenalty"
+  ];
 
+  // Hidden snapPenalty kept for compatibility; not surfaced in UI here
+  if(!$("snapPenalty")){
+    const hidden = document.createElement("input");
+    hidden.type="hidden"; hidden.id="snapPenalty"; hidden.value="0";
+    document.body.appendChild(hidden);
+  }
+
+  // Load saved values
   try{
-    const saved = JSON.parse(localStorage.getItem("wgt_putt_inch")||"{}");
+    const saved = JSON.parse(localStorage.getItem("wgt_putt_aim_v1")||"{}");
     fields.forEach(f=>{
-      if(saved[f] !== undefined){
+      if(saved[f] !== undefined && $(f)){
         $(f).value = saved[f];
       }
     });
-    if(saved["elevationIn"] === undefined){
-      $("elevationIn").value = -1.0;
-    }
+    if(saved["elevationIn"] === undefined){ $("elevationIn").value = -1.0; }
   }catch(e){}
 
   function clamp(n, min, max){ return Math.min(Math.max(n, min), max); }
@@ -161,14 +211,16 @@
   };
 
   function toNum(id, def=0){
-    const v = parseFloat($(id).value);
+    const el = $(id);
+    if(!el) return def;
+    const v = parseFloat(el.value);
     return Number.isFinite(v) ? v : def;
   }
 
   function save(){
     const obj={};
-    fields.forEach(f=>obj[f] = $(f).value);
-    localStorage.setItem("wgt_putt_inch", JSON.stringify(obj));
+    fields.forEach(f=>{ if($(f)) obj[f] = $(f).value; });
+    localStorage.setItem("wgt_putt_aim_v1", JSON.stringify(obj));
   }
 
   function formatPct(x){
@@ -176,51 +228,103 @@
   }
 
   function calc(){
-    const dist_ft = toNum("distance", 0);
-    const elev_in = toNum("elevationIn", -1.0);
-    const elev_ft = elev_in / 12.0;
+    // --- Power calc (unchanged core) ---
+    const dist_ft = toNum("distance", 0);                  // feet
+    const elev_in = toNum("elevationIn", -1.0);            // inches (UI)
+    const elev_ft = elev_in / 12.0;                        // convert to feet for math
     const speed = toNum("greenSpeed", 10.0);
     const meter = parseFloat($("putterMeter").value) || 100;
     const mult  = toNum("stimp", 1.00);
-    const upF   = toNum("uphillFactor", 1.70);
-    const dnF   = toNum("downhillFactor", 0.65);
     const snapP = toNum("snapPenalty", 0);
 
     if(dist_ft <= 0){
       $("result").textContent = "Enter a positive distance.";
       $("explain").textContent = "";
+      $("aimOut").value = "—";
+      $("aimExplain").textContent = "";
       return;
     }
 
+    // Effective distance with elevation
+    const upF   = 1.70;
+    const dnF   = 0.65;
     const elevAdj_ft = elev_ft > 0 ? elev_ft * upF : elev_ft * dnF;
     const effDist_ft = Math.max(0, dist_ft + elevAdj_ft);
+
+    // Speed scaling (anchor to 10.0)
     const speedScale = (speed / 10.0) * mult;
 
     let rawPowerPct = (effDist_ft / 100.0) * 100.0 * (1 / speedScale);
-    rawPowerPct *= (100.0 / meter);
+    const meterScale = 100.0 / meter;
+    rawPowerPct *= meterScale;
     rawPowerPct *= (1 + snapP/100);
     rawPowerPct = clamp(rawPowerPct, 0, 100);
 
     $("result").textContent = formatPct(rawPowerPct);
     $("explain").textContent =
-      `Inputs → ${dist_ft.toFixed(1)} ft, elevation ${elev_in.toFixed(1)} in (${elev_ft.toFixed(3)} ft). ` +
-      `Adj: ${elevAdj_ft.toFixed(2)} ft ➜ Eff: ${effDist_ft.toFixed(2)} ft. SpeedScale ${speedScale.toFixed(3)}.`;
+      `Inputs → ${dist_ft.toFixed(1)} ft, elevation ${elev_in.toFixed(1)} in (${elev_ft.toFixed(3)} ft), speed ${speed.toFixed(1)}, meter ${meter}%. ` +
+      `Calc → Elev adj ${elevAdj_ft.toFixed(2)} ft ➜ eff ${effDist_ft.toFixed(2)} ft. SpeedScale ${speedScale.toFixed(3)}, MeterScale ${meterScale.toFixed(2)}.`;
+
+    // --- Aim calc (new) ---
+    const t_sq = toNum("dotTime", 0);        // seconds per square
+    const dir = ($("dotDir").value || "L").toUpperCase();
+    const K = toNum("breakK", 0.040);
+    const a = toNum("distExp", 1.20);
+    const b = toNum("spdExp", 0.70);
+    const upPctPerFt = toNum("upBreakPerFt", -0.30);
+    const dnPctPerFt = toNum("dnBreakPerFt", +0.40);
+
+    if(t_sq > 0){
+      const dotSpeed = 1.0 / t_sq; // squares per second
+      const greenFactor = Math.pow((speed/10.0) * mult, b);
+      const distFactor = Math.pow(effDist_ft, a);
+      const elevBreakFactor = elev_ft >= 0
+        ? (1 + elev_ft * upPctPerFt)   // uphill reduces break (negative default)
+        : (1 + Math.abs(elev_ft) * dnPctPerFt); // downhill increases break (positive default)
+
+      const elevAdjFactor = Math.max(0.2, elevBreakFactor); // keep non-negative
+
+      let aimSquares = K * dotSpeed * greenFactor * distFactor * elevAdjFactor;
+
+      // Direction: positive -> aim LEFT, negative -> aim RIGHT
+      if(dir === "R") aimSquares *= -1;
+
+      // Round to hundredths of a square
+      aimSquares = Math.round(aimSquares * 100) / 100;
+
+      const absAim = Math.abs(aimSquares);
+      const side = aimSquares >= 0 ? "LEFT" : "RIGHT";
+      const frac = absAim < 1 ? ` (${Math.round(absAim*100)}% of 1 square)` : "";
+      document.getElementById("aimOut").value = `${aimSquares}`;
+      document.getElementById("aimExplain").textContent =
+        `Aim ${absAim.toFixed(2)} square${absAim===1? "":"s"} ${side}${frac}. ` +
+        `DotSpeed=${dotSpeed.toFixed(2)} sq/s, K=${K}, dist^${a}, speed^${b}, elevFactor=${elevAdjFactor.toFixed(2)}.`;
+    }else{
+      document.getElementById("aimOut").value = "—";
+      document.getElementById("aimExplain").textContent = "Enter a Dot Time (sec per square) to compute aim.";
+    }
 
     save();
   }
 
-  $("calcBtn").addEventListener("click", calc);
-  $("resetBtn").addEventListener("click", ()=>{
-    $("distance").value = "";
-    $("elevationIn").value = (-1.0).toFixed(1);
-    $("greenSpeed").value = "10.0";
-    $("putterMeter").value = "100";
-    $("stimp").value = "1.00";
-    $("uphillFactor").value = "1.70";
-    $("downhillFactor").value = "0.65";
-    $("snapPenalty").value = "0";
-    $("result").textContent = "Enter values and tap Calculate.";
-    $("explain").textContent = "";
+  document.getElementById("calcBtn").addEventListener("click", calc);
+  document.getElementById("resetBtn").addEventListener("click", ()=>{
+    document.getElementById("distance").value = "";
+    document.getElementById("elevationIn").value = (-1.0).toFixed(1);
+    document.getElementById("greenSpeed").value = "10.0";
+    document.getElementById("putterMeter").value = "100";
+    document.getElementById("stimp").value = "1.00";
+    document.getElementById("dotTime").value = "";
+    document.getElementById("dotDir").value = "L";
+    document.getElementById("breakK").value = "0.040";
+    document.getElementById("distExp").value = "1.20";
+    document.getElementById("spdExp").value = "0.70";
+    document.getElementById("upBreakPerFt").value = "-0.30";
+    document.getElementById("dnBreakPerFt").value = "+0.40";
+    document.getElementById("result").textContent = "Enter values and tap Calculate.";
+    document.getElementById("aimOut").value = "—";
+    document.getElementById("aimExplain").textContent = "";
+    document.getElementById("explain").textContent = "";
     save();
   });
 })();

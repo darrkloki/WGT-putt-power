@@ -1,61 +1,68 @@
 # WGT Putt Power Calculator
 
-A simple, self-contained HTML web app for calculating **putt power in WGT Golf** based on distance, green speed, elevation, putter meter setting, and advanced tuning factors.
+A simple, self-contained HTML web app for calculating **putt power in WGT Golf** based on distance, green speed, elevation, putter meter setting, and tunable factors.
 
-![screenshot](screenshot.png) <!-- optional if you add a screenshot -->
+![screenshot](screenshot.png)
 
 ## Features
 
-- **Distance to Hole (ft)** – Enter the total distance from ball to cup in feet.
-- **Elevation (in)** – Enter elevation change in inches (**positive** for uphill, **negative** for downhill).
-- **Green Speed** – Match the stimp reading in-game (e.g., `10.0` for Very Fast).
-- **Putter Meter %** – Select your putter’s meter scale (100%, 75%, 50%, 25%).
-- **Speed Multiplier** – Fine-tune for your ball type or personal feel.
-- **Advanced Tuning**:
-  - Uphill Factor (per foot)
-  - Downhill Factor (per foot)
-  - Snap Miss Penalty (%)
-- **iOS-Friendly Controls** – Includes nudge buttons for ±0.1 changes in elevation when the iOS keypad hides the ± sign.
-- **Offline Ready** – No dependencies, runs locally in your browser.
-- **Local Storage** – Remembers your last settings.
+- **Distance to Hole (ft)** – Enter the distance in feet.
+- **Elevation (in)** – Enter elevation change in inches (**+** uphill, **−** downhill). Internally converted to feet.
+- **Green Speed** – Match the stimp reading (e.g., `10.0` for Very Fast).
+- **Putter Meter %** – Select your putter’s meter scale (100%, 75%, 50%, 25%). The output power already accounts for this.
+- **Speed Multiplier** – Fine-tune for your ball or personal feel.
+- **Local Storage** – Your last settings persist.
 
 ## Usage
 
-1. Open the calculator in your browser (or bookmark the GitHub Pages link).
-2. Enter:
-   - Distance to hole in **feet**.
-   - Elevation change in **inches** (as shown in WGT Golf).
-   - Green speed, putter meter %, and any tuning adjustments.
-3. Click **Calculate Power**.
-4. The result is shown in **% power** for your current putter meter setting.
+1. Open `wgt_putt_power.html` in your browser (or via GitHub Pages).
+2. Enter distance (ft), elevation (in), green speed, putter meter %, and any tuning.
+3. Click **Calculate Power** to get a % power for your meter.
 
 ### Example
+```
+Inputs → 12.5 ft, elevation −1.0 in (−0.083 ft), speed 10.0, meter 100%
+Output → 12.2%
+```
 
-For a 12.5 ft putt, 10.0 green speed, −1 inch downhill, and a 100% putter meter:
+## Installation / GitHub Pages
 
-## Installation / Running Locally
+- Put `wgt_putt_power.html` in the repo root (or `/docs` if your Pages source is `/docs`).
+- Enable Pages in **Settings → Pages** and open:
+  `https://<username>.github.io/<repo>/wgt_putt_power.html`
 
-You can run this app from any browser without a server.
+---
 
-**Option 1: Open Locally**
-- Download `wgt_putt_power.html` from the repo.
-- Double-click to open it in your browser.
+## Advanced Aiming (Grid Dots)
 
-**Option 2: GitHub Pages**
-- Place `wgt_putt_power.html` in your repo root (or `/docs` if Pages is set to `/docs`).
-- Enable GitHub Pages in **Repo Settings → Pages**.
-- Access your calculator at: https://darrkloki.github.io/WGT-putt-power/
+You can optionally add **aiming** help that outputs how many grid **squares** to aim left/right, using the **moving dots** on the green.
 
-- ## Notes
+### Inputs
+- **Dot Time (sec per square)** – Time how long a dot takes to cross **one** grid square **near the hole**. Average 2–3 timings (e.g., count 3 squares with a stopwatch and divide by 3).
+- **Dot Direction** – Movement **Left** or **Right** as you face the hole.
 
-- Elevation in WGT is displayed in **inches**. This app converts inches → feet internally before applying the uphill/downhill factors.
-- Uphill/Downhill factors are set per foot and can be tuned in the Advanced section.
-- The **Speed Multiplier** lets you match your real in-game feel for different balls or conditions.
+### Output
+- **Aim Offset (squares)** – Positive = aim **LEFT**, Negative = aim **RIGHT**. If it’s less than 1, the app also shows the **% of one square**.
 
-## License
+### Model (tunable)
+```
+dotSpeed      = 1 / dotTime_seconds              // squares per second
+greenFactor   = ((greenSpeed / 10) * multiplier) ^ b
+distFactor    = (effectiveDistance_ft) ^ a       // elevation-adjusted distance
+elevFactor    = 1 + elev_ft * upBreakPerFt       // uphill reduces break (default negative)
+             or 1 + |elev_ft| * dnBreakPerFt     // downhill increases break (default positive)
+aimSquares    = K * dotSpeed * greenFactor * distFactor * elevFactor
+```
 
-This project is provided **free for personal use**.  
-No warranty is given for accuracy – always verify in-game.
+**Defaults**: `K=0.040`, `a=1.20`, `b=0.70`, `upBreakPerFt=−0.30`, `dnBreakPerFt=+0.40`.  
+Increase **K** if you under‑read; decrease if you over‑read. Adjust **a** slightly if long putts seem off.
+
+### Quick Calibration (3 minutes)
+1. Find a 10–12 ft breaking putt on 10.0 greens.
+2. Measure **Dot Time** near the hole, set direction, calculate.
+3. If your putt **misses low**, raise **K** by +0.005; **misses high**, lower K. Repeat once or twice.
+
+**Tip:** For steadier timing, track 3 squares of travel and divide the total time by 3.
 
 ---
 
