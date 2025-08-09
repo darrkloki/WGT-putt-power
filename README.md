@@ -25,14 +25,6 @@ Inputs → 12.5 ft, elevation −1.0 in (−0.083 ft), speed 10.0, meter 100%
 Output → 12.2%
 ```
 
-## Installation / GitHub Pages
-
-- Put `wgt_putt_power.html` in the repo root (or `/docs` if your Pages source is `/docs`).
-- Enable Pages in **Settings → Pages** and open:
-  `https://<username>.github.io/<repo>/wgt_putt_power.html`
-
----
-
 ## Advanced Aiming (Grid Dots)
 
 You can optionally add **aiming** help that outputs how many grid **squares** to aim left/right, using the **moving dots** on the green.
