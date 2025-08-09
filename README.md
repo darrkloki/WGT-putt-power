@@ -1,5 +1,7 @@
 # WGT Putt Power Calculator
 
+https://darrkloki.github.io/WGT-putt-power/
+
 A simple, self-contained HTML web app for calculating **putt power in WGT Golf** based on distance, green speed, elevation, putter meter setting, and tunable factors.
 
 ![screenshot](screenshot.png)
